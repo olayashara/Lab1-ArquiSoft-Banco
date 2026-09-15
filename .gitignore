@@ -1,0 +1,14 @@
+# Node / React
+node_modules/
+banco-frontend/node_modules/
+banco-frontend/dist/
+
+# Java / Maven / Spring Boot
+target/
+.mvn/
+*.jar
+
+# IDEs
+.idea/
+.vscode/
+*.iml
