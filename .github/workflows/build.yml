@@ -51,6 +51,8 @@ jobs:
         run: |
           mvn -B verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar \
             -Dsonar.host.url=https://sonarcloud.io \
+            -Dsonar.organization=olayashara \
+            -Dsonar.projectKey=olayashara_Lab1-ArquiSoft-Banco \
             -f banco-backend/pom.xml
 
   # Job 3: Compilación y empaquetado del artefacto JAR
