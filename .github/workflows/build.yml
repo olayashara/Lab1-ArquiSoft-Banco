@@ -7,11 +7,22 @@ on:
       - main
       - feature/cloud-deploy
 
+permissions:
+  contents: read
+
 jobs:
-  # Job 1: Pruebas unitarias y reporte de JaCoCo
+
+  # ==========================================
+  # 1. Pruebas unitarias y reporte JaCoCo
+  # ==========================================
   tests:
     name: Unit tests
     runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: banco-backend
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -20,18 +31,36 @@ jobs:
         uses: actions/setup-java@v4
         with:
           java-version: '17'
-          distribution: 'temurin'
+          distribution: temurin
           cache: maven
+          cache-dependency-path: banco-backend/pom.xml
 
-      - name: Run Tests & Generate JaCoCo Report
-        run: mvn -B test -Dspring.profiles.active=test -DfailIfNoTests=false
-        working-directory: banco-backend
+      - name: Run tests and generate JaCoCo report
+        run: mvn -B -ntp clean test -DfailIfNoTests=false
 
-  # Job 2: Análisis con SonarCloud
+      - name: Upload test and coverage reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-and-coverage-reports
+          path: |
+            banco-backend/target/surefire-reports/
+            banco-backend/target/site/jacoco/
+          if-no-files-found: warn
+          retention-days: 7
+
+  # ==========================================
+  # 2. Análisis de código con SonarCloud
+  # ==========================================
   sonar:
     name: SonarCloud analysis
     needs: tests
     runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: banco-backend
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -42,26 +71,47 @@ jobs:
         uses: actions/setup-java@v4
         with:
           java-version: '17'
-          distribution: 'temurin'
+          distribution: temurin
+          cache: maven
+          cache-dependency-path: banco-backend/pom.xml
+
+      # Re-ejecuta test sin sobreescribir resultados limpios para asegurar que JaCoCo XML esté en disco
+      - name: Generate Coverage Report
+        run: mvn -B -ntp test -DfailIfNoTests=false
+
+      - name: Verify JaCoCo XML report
+        run: |
+          if [ ! -f target/site/jacoco/jacoco.xml ]; then
+            echo "ERROR: JaCoCo XML report was not generated."
+            exit 1
+          fi
+          echo "JaCoCo XML report found."
+          ls -lh target/site/jacoco/jacoco.xml
 
       - name: SonarCloud Scan
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          mvn -B verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar \
+          mvn -B -ntp org.sonarsource.scanner.maven:sonar-maven-plugin:sonar \
             -Dsonar.host.url=https://sonarcloud.io \
             -Dsonar.organization=olayashara \
             -Dsonar.projectKey=olayashara_Lab1-ArquiSoft-Banco \
-            -Dsonar.coverage.jacoco.xmlReportPaths=banco-backend/target/site/jacoco/jacoco.xml \
-            -DskipTests \
-            -f banco-backend/pom.xml
+            -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml \
+            -Dsonar.token="$SONAR_TOKEN"
 
-  # Job 3: Compilación y empaquetado del artefacto JAR
+  # ==========================================
+  # 3. Construcción y publicación del JAR
+  # ==========================================
   build:
     name: Build Artifact
     needs: sonar
     runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: banco-backend
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -70,15 +120,17 @@ jobs:
         uses: actions/setup-java@v4
         with:
           java-version: '17'
-          distribution: 'temurin'
+          distribution: temurin
           cache: maven
+          cache-dependency-path: banco-backend/pom.xml
 
       - name: Build with Maven
-        run: mvn -B package -DskipTests
-        working-directory: banco-backend
+        run: mvn -B -ntp package -DskipTests
 
       - name: Upload JAR Artifact
         uses: actions/upload-artifact@v4
         with:
           name: java-jar
           path: banco-backend/target/*.jar
+          if-no-files-found: error
+          retention-days: 7
