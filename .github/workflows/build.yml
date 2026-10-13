@@ -24,7 +24,7 @@ jobs:
           cache: maven
 
       - name: Run Tests & Generate JaCoCo Report
-        run: mvn -B test -DfailIfNoTests=false
+        run: mvn -B test -Dspring.profiles.active=test -DfailIfNoTests=false
         working-directory: banco-backend
 
   # Job 2: Análisis con SonarCloud
@@ -53,8 +53,8 @@ jobs:
             -Dsonar.host.url=https://sonarcloud.io \
             -Dsonar.organization=olayashara \
             -Dsonar.projectKey=olayashara_Lab1-ArquiSoft-Banco \
-            -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml \
-            -DfailIfNoTests=false \
+            -Dsonar.coverage.jacoco.xmlReportPaths=banco-backend/target/site/jacoco/jacoco.xml \
+            -DskipTests \
             -f banco-backend/pom.xml
 
   # Job 3: Compilación y empaquetado del artefacto JAR
