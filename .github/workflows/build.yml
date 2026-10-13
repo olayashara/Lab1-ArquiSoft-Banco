@@ -8,7 +8,7 @@ on:
       - feature/cloud-deploy
 
 jobs:
-  # Job 1: Pruebas unitarias
+  # Job 1: Pruebas unitarias y reporte de JaCoCo
   tests:
     name: Unit tests
     runs-on: ubuntu-latest
@@ -23,8 +23,8 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
-      - name: Run Tests
-        run: mvn -B test -Dtest=*Test -DfailIfNoTests=false
+      - name: Run Tests & Generate JaCoCo Report
+        run: mvn -B test -DfailIfNoTests=false
         working-directory: banco-backend
 
   # Job 2: Análisis con SonarCloud
@@ -54,7 +54,7 @@ jobs:
             -Dsonar.organization=olayashara \
             -Dsonar.projectKey=olayashara_Lab1-ArquiSoft-Banco \
             -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml \
-            -DskipTests \
+            -DfailIfNoTests=false \
             -f banco-backend/pom.xml
 
   # Job 3: Compilación y empaquetado del artefacto JAR
